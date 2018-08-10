@@ -1,0 +1,7 @@
+export const TOGGLE_DEVICE = 'TOGGLE_DEVICE'
+
+export const TOGGLE_SIDEBAR = 'TOGGLE_SIDEBAR'
+
+export const TOGGLE_MEMU = 'TOGGLE_MEMU'
+
+export const SWITCH_EFFECT = 'SWITCH_EFFECT'

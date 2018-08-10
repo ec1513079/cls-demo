@@ -1,0 +1,233 @@
+{
+  "$schema": "https://schema.management.azure.com/schemas/2015-01-01/deploymentTemplate.json#",
+  "contentVersion": "1.0.0.0",
+
+  "parameters": {
+    
+    "appNamePrefix": {
+      "type": "string",
+      "minLength": 1
+    },
+    "location": {
+      "type": "string",
+      "defaultValue": "[resourceGroup().location]"
+    },
+
+    "aadAuthID": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "aadAuthSecret": {
+      "type": "string",
+      "defaultValue": ""
+    },
+    "aadAuthTenant": {
+      "type": "string",
+      "defaultValue": "common"
+    }
+  },
+
+  "variables": {
+    "insightsName": "[concat(parameters('appNamePrefix'), '-insights')]",
+
+    "storageAccountName": "[replace(parameters('appNamePrefix'), '-', '')]",
+    "storageAccountid": "[concat(resourceGroup().id,'/providers/','Microsoft.Storage/storageAccounts/', variables('storageAccountName'))]",
+
+    "spaName": "[concat(parameters('appNamePrefix'), '-spa')]",
+    "funcName": "[concat(parameters('appNamePrefix'), '-func')]"
+  },
+
+  "resources": [
+    {
+      "type": "Microsoft.Insights/components",
+      "name": "[variables('insightsName')]",
+      "apiVersion": "2015-05-01",
+      "location": "southeastasia",
+      "kind": "web",
+      "properties": {
+        "Application_Type": "web"
+      }
+    },
+
+    {
+      "type": "Microsoft.Storage/storageAccounts",
+      "name": "[variables('storageAccountName')]",
+      "apiVersion": "2017-10-01",
+      "location": "[parameters('location')]",
+      "kind": "Storage",
+      "sku": {
+        "name": "Standard_LRS"
+      }
+    },
+
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2016-09-01",
+      "name": "[variables('spaName')]",
+      "location": "[resourceGroup().location]",
+      "properties": {
+        "name": "[variables('spaName')]"
+      },
+      "sku": {
+        "name": "F1",
+        "capacity": 1
+      }
+    },
+    {
+      "apiVersion": "2016-08-01",
+      "type": "Microsoft.Web/sites",
+      "name": "[variables('spaName')]",
+      "location": "[parameters('location')]",
+      "kind": "app",
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', variables('insightsName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+        "[resourceId('Microsoft.Web/serverfarms', variables('spaName'))]"
+      ],
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('spaName'))]",
+        "httpsOnly": true,
+        "siteConfig": {
+          "appSettings": [{
+              "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+              "value": "[reference(resourceId('Microsoft.Insights/components', variables('insightsName'))).InstrumentationKey]"
+            },
+            {
+              "name": "WEBSITE_NODE_DEFAULT_VERSION",
+              "value": "8.11.1"
+            },
+            {
+              "name": "AZURE_FUNCTIONS_ENDPOINT",
+              "value": "[concat('https://', variables('funcName'), '.azurewebsites.net/api')]"
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "type": "Microsoft.Web/serverfarms",
+      "apiVersion": "2016-09-01",
+      "name": "[variables('funcName')]",
+      "location": "[resourceGroup().location]",
+      "kind": "functionapp",
+      "sku": {
+        "name": "Y1",
+        "tier": "Dynamic",
+        "size": "Y1",
+        "family": "Y",
+        "capacity": 0
+      },
+      "properties": {
+        "name": "[variables('funcName')]"
+      }
+    },
+    {
+      "apiVersion": "2016-08-01",
+      "type": "Microsoft.Web/sites",
+      "name": "[variables('funcName')]",
+      "location": "[parameters('location')]",
+      "kind": "functionapp",
+      "dependsOn": [
+        "[resourceId('Microsoft.Insights/components', variables('insightsName'))]",
+        "[resourceId('Microsoft.Storage/storageAccounts', variables('storageAccountName'))]",
+        "[resourceId('Microsoft.Web/serverfarms', variables('funcName'))]"
+      ],
+      "properties": {
+        "serverFarmId": "[resourceId('Microsoft.Web/serverfarms', variables('funcName'))]",
+        "httpsOnly": true,
+        "siteConfig": {
+          "cors": {
+            "allowedOrigins": [
+              "https://functions.azure.com",
+              "https://functions-staging.azure.com",
+              "https://functions-next.azure.com",
+              "[concat('https://', variables('spaName'), '.azurewebsites.net')]"
+            ]
+          },
+          "appSettings": [{
+              "name": "AzureWebJobsDashboard",
+              "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountid'),'2015-05-01-preview').key1)]"
+            },
+            {
+              "name": "AzureWebJobsStorage",
+              "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountid'),'2015-05-01-preview').key1)]"
+            },
+            {
+              "name": "WEBSITE_CONTENTAZUREFILECONNECTIONSTRING",
+              "value": "[concat('DefaultEndpointsProtocol=https;AccountName=', variables('storageAccountName'), ';AccountKey=', listKeys(variables('storageAccountid'),'2015-05-01-preview').key1)]"
+            },
+            {
+              "name": "WEBSITE_CONTENTSHARE",
+              "value": "[toLower(variables('funcName'))]"
+            },
+            {
+              "name": "FUNCTIONS_EXTENSION_VERSION",
+              "value": "~1"
+            },
+            {
+              "name": "WEBSITE_NODE_DEFAULT_VERSION",
+              "value": "8.11.1"
+            },
+            {
+              "name": "APPINSIGHTS_INSTRUMENTATIONKEY",
+              "value": "[reference(resourceId('Microsoft.Insights/components', variables('insightsName'))).InstrumentationKey]"
+            }
+          ]
+        }
+      }
+    },
+
+    {
+      "condition": "[not(equals(parameters('aadAuthID'),''))]",
+      "apiVersion": "2018-02-01",
+      "type": "Microsoft.Web/sites/config",
+      "name": "[concat(variables('spaName'), '/authsettings')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('spaName'))]"
+      ],
+      "properties": {
+        "enabled": true,
+        "unauthenticatedClientAction": "RedirectToLoginPage",
+        "tokenStoreEnabled": true,
+        "defaultProvider": "AzureActiveDirectory",
+        "clientId": "[parameters('aadAuthID')]",
+        "clientSecret": "[parameters('aadAuthSecret')]",
+        "issuer": "[concat('https://login.microsoftonline.com/', parameters('aadAuthTenant') , '/')]",
+        "additionalLoginParams": [
+          "response_type=code id_token",
+          "[concat('resource=', parameters('aadAuthID'))]"
+        ],
+        "isAadAutoProvisioned": false
+      }
+    },
+    {
+      "condition": "[not(equals(parameters('aadAuthID'),''))]",
+      "apiVersion": "2018-02-01",
+      "type": "Microsoft.Web/sites/config",
+      "name": "[concat(variables('funcName'), '/authsettings')]",
+      "location": "[parameters('location')]",
+      "dependsOn": [
+        "[resourceId('Microsoft.Web/sites', variables('funcName'))]"
+      ],
+      "properties": {
+        "enabled": true,
+        "unauthenticatedClientAction": "RedirectToLoginPage",
+        "tokenStoreEnabled": true,
+        "defaultProvider": "AzureActiveDirectory",
+        "clientId": "[parameters('aadAuthID')]",
+        "clientSecret": "[parameters('aadAuthSecret')]",
+        "issuer": "[concat('https://login.microsoftonline.com/', parameters('aadAuthTenant') , '/')]",
+        "additionalLoginParams": [
+          "response_type=code id_token",
+          "[concat('resource=', parameters('aadAuthID'))]"
+        ],
+        "isAadAutoProvisioned": false
+      }
+    }
+    
+  ],
+
+  "outputs": {}
+}

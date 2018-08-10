@@ -1,0 +1,12 @@
+{
+  "$schema": "http://json.schemastore.org/proxies",
+  "proxies": {
+    "sample_api": {
+      "matchCondition": {
+        "methods": ["GET"],
+        "route": "/api/sample"
+      },
+      "backendUri": "https://localhost/api/SampleHttpGet"
+    }
+  }
+}

@@ -1,0 +1,17 @@
+@import '~bulma/sass/utilities/mixins';
+
+.messages {
+  .message {
+    span.icon {
+      display:none
+    }
+  }
+
+  .message-box {
+    min-width: 400px;
+
+    @include mobile() {
+      min-width: 0px;
+    }
+  }
+}
