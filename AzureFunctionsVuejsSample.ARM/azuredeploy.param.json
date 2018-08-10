@@ -4,15 +4,16 @@
   "parameters": {
     "appNamePrefix": {
       "value": "ec-azdeploy-test"
-    },
-    "aadAuthID": {
-      "value": "3b39f401-ac77-4c15-a95f-5c8cd225ef64"
-    },
-    "aadAuthSecret": {
-      "value": "A7/SiV5NUMvWc58rjDJtfzRmN+oRrf0dsjnTqFdCKls="
-    },
-    "aadAuthTenant": {
-      "value": "ec1513079gmail.onmicrosoft.com"
     }
+    // ,
+    // "aadAuthID": {
+    //   "value": "3b39f401-ac77-4c15-a95f-5c8cd225ef64"
+    // },
+    // "aadAuthSecret": {
+    //   "value": "A7/SiV5NUMvWc58rjDJtfzRmN+oRrf0dsjnTqFdCKls="
+    // },
+    // "aadAuthTenant": {
+    //   "value": "ec1513079gmail.onmicrosoft.com"
+    // }
   }
 }
